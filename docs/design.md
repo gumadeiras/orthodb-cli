@@ -42,3 +42,17 @@ multi-GB gene/sequence dumps. Downloads are explicit, streamed to a temporary
 
 The download README says non-FASTA files are tab-separated and do not include
 headers. Local commands must own their schema labels per dataset.
+
+## SQLite Index
+
+Downloaded tab files can be indexed into `orthodb.sqlite` in the cache
+directory. The first supported datasets are:
+
+- `species`
+- `levels`
+- `ogs`
+- `og2genes`
+- `genes`
+
+This keeps the CLI fast for repeated local queries while preserving the raw
+official downloads. Multi-GB files remain opt-in downloads.

@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from . import __version__
 from .cache import (
@@ -17,8 +17,15 @@ from .cache import (
     save_manifest,
 )
 from .client import API_BASE, OrthoDBClient
+from .db import db_status, index_cache
 from .errors import OrthoDBError
-from .local import species_search
+from .local import gene_search, og_search, ortholog_gene_ids, species_search
+
+SYNC_PROFILES = {
+    "minimal": ("species", "levels", "level2species"),
+    "annotations": ("species", "levels", "ogs", "og_xrefs"),
+    "orthologs": ("species", "levels", "ogs", "og2genes"),
+}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -148,6 +155,19 @@ def add_cache_commands(subcommands: argparse._SubParsersAction[argparse.Argument
     download.add_argument("--no-verify", action="store_true")
     download.set_defaults(handler=cmd_cache_download)
 
+    sync = cache_sub.add_parser("sync", help="Download a curated dataset profile.")
+    sync.add_argument("profile", choices=sorted(SYNC_PROFILES))
+    sync.add_argument("--include-large", action="store_true", help="Allow downloads larger than 1 GB.")
+    sync.add_argument("--index", action="store_true", help="Index downloaded supported tables into SQLite.")
+    sync.set_defaults(handler=cmd_cache_sync)
+
+    index = cache_sub.add_parser("index", help="Index downloaded flat files into SQLite.")
+    index.add_argument("datasets", nargs="*", choices=sorted({"all", *SYNC_PROFILES["orthologs"], "genes"}))
+    index.set_defaults(handler=cmd_cache_index)
+
+    db = cache_sub.add_parser("db", help="Show SQLite index status.")
+    db.set_defaults(handler=lambda args, client, cache_dir: db_status(cache_dir))
+
     where = cache_sub.add_parser("dir", help="Print the cache directory.")
     where.set_defaults(handler=lambda args, client, cache_dir: str(cache_dir))
 
@@ -160,6 +180,21 @@ def add_local_commands(subcommands: argparse._SubParsersAction[argparse.Argument
     species.add_argument("query")
     species.add_argument("--limit", type=int, default=20)
     species.set_defaults(handler=lambda args, client, cache_dir: species_search(cache_dir, args.query, args.limit))
+
+    og = local_sub.add_parser("og", help="Search indexed orthologous groups.")
+    og.add_argument("query")
+    og.add_argument("--limit", type=int, default=20)
+    og.set_defaults(handler=lambda args, client, cache_dir: og_search(cache_dir, args.query, args.limit))
+
+    gene = local_sub.add_parser("gene", help="Search indexed genes.")
+    gene.add_argument("query")
+    gene.add_argument("--limit", type=int, default=20)
+    gene.set_defaults(handler=lambda args, client, cache_dir: gene_search(cache_dir, args.query, args.limit))
+
+    orthologs = local_sub.add_parser("orthologs", help="List indexed genes in an OG.")
+    orthologs.add_argument("og_id")
+    orthologs.add_argument("--limit", type=int, default=10_000)
+    orthologs.set_defaults(handler=lambda args, client, cache_dir: ortholog_gene_ids(cache_dir, args.og_id, args.limit))
 
 
 def cmd_version(args: argparse.Namespace, client: OrthoDBClient, cache_dir: Path) -> str:
@@ -254,6 +289,45 @@ def cmd_cache_download(args: argparse.Namespace, client: OrthoDBClient, cache_di
     return {"name": entry.name, "path": str(path), "md5": entry.md5}
 
 
+def cmd_cache_sync(args: argparse.Namespace, client: OrthoDBClient, cache_dir: Path) -> Any:
+    entries = load_manifest(cache_dir)
+    downloaded = []
+    skipped = []
+    for dataset in SYNC_PROFILES[args.profile]:
+        entry = resolve_dataset(entries, dataset)
+        if is_large(entry.size) and not args.include_large:
+            skipped.append({"dataset": dataset, "name": entry.name, "size": entry.size, "reason": "requires --include-large"})
+            continue
+        path = download_entry(entry, cache_dir)
+        downloaded.append({"dataset": dataset, "name": entry.name, "size": entry.size, "path": str(path)})
+
+    indexed = index_cache(cache_dir, indexable_aliases(item["dataset"] for item in downloaded)) if args.index else []
+    return {"profile": args.profile, "downloaded": downloaded, "skipped": skipped, "indexed": indexed}
+
+
+def cmd_cache_index(args: argparse.Namespace, client: OrthoDBClient, cache_dir: Path) -> Any:
+    datasets = None if not args.datasets or args.datasets == ["all"] else args.datasets
+    results = index_cache(cache_dir, datasets)
+    if not results:
+        raise OrthoDBError("no supported downloaded datasets found to index")
+    return results
+
+
+def indexable_aliases(datasets: Iterable[str]) -> list[str]:
+    supported = {"species", "levels", "ogs", "og2genes", "genes"}
+    return [dataset for dataset in datasets if dataset in supported]
+
+
+def is_large(size: str) -> bool:
+    value, _, unit = size.partition(" ")
+    try:
+        number = float(value)
+    except ValueError:
+        return False
+    unit = unit.upper()
+    return unit.startswith("GB") and number >= 1.0
+
+
 def write_or_return_text(text: str, output: str | None) -> Any:
     if output:
         Path(output).write_text(text, encoding="utf-8")
@@ -273,4 +347,3 @@ def emit(value: Any, output: str) -> None:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

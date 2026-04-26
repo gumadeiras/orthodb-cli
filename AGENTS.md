@@ -14,6 +14,8 @@ checksum-verified flat-file caching.
   and `/tab`.
 - Do not auto-download multi-GB flat files. Show manifest/status first, then
   require an explicit `cache download`.
+- Keep SQLite indexes derived from cached source files; raw downloads remain
+  the source of truth.
 - If flat-file schemas change, update local parsers and docs together.
 
 ## Gates
@@ -30,4 +32,3 @@ PYTHONPATH=src python3 -m orthodb_cli.cli version
 PYTHONPATH=src python3 -m orthodb_cli.cli search p450 --take 2 --level 33208 --singlecopy 0.8
 PYTHONPATH=src python3 -m orthodb_cli.cli cache manifest --refresh
 ```
-

@@ -34,7 +34,10 @@ orthodb orthologs 4977at9604 --species 9606_0,10090_0
 orthodb fasta 4977at9604 --species 9606_0 --output group.fa
 orthodb cache manifest
 orthodb cache download species
+orthodb cache index species
+orthodb cache sync minimal --index
 orthodb local species "Homo sapiens"
+orthodb local og "olfactory"
 ```
 
 `/blast`, `/fasta`, and `/tab` calls are rate-limited to one request per
@@ -68,6 +71,28 @@ https://data.orthodb.org/current/download/odb_data_dump
 
 Large data files are intentionally not auto-downloaded. Use
 `orthodb cache manifest` first, then download a named dataset.
+
+Curated sync profiles:
+
+- `minimal`: species, levels, level-to-species
+- `annotations`: minimal metadata plus OG annotations
+- `orthologs`: OG tables, skipping multi-GB files unless `--include-large`
+
+Build a local SQLite index from downloaded files:
+
+```bash
+orthodb cache index all
+orthodb cache db
+```
+
+Indexed local queries:
+
+```bash
+orthodb local species "Homo sapiens"
+orthodb local og "Cytochrome P450"
+orthodb local gene P12345
+orthodb local orthologs 4977at9604
+```
 
 ## Source Notes
 
