@@ -18,6 +18,15 @@ Goals:
 
 ## Install
 
+Homebrew:
+
+```bash
+brew tap gumadeiras/tap
+brew install orthodb-cli
+```
+
+From source:
+
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
@@ -107,6 +116,16 @@ Resolve IDs before choosing a query path:
 orthodb resolve 4977at9604
 orthodb resolve 9606_0:0017fc
 orthodb resolve P12345
+```
+
+## Release
+
+Current release: `v0.1.0`.
+
+Release artifacts are attached to GitHub releases for Homebrew packaging:
+
+```text
+https://github.com/gumadeiras/orthodb-cli/releases
 ```
 
 ## Source Notes

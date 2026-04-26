@@ -25,6 +25,7 @@ checksum-verified flat-file caching.
 ```bash
 PYTHONPATH=src python3 -m unittest discover -s tests
 python3 -m compileall -q src tests
+python3 -m build
 ```
 
 Useful live smoke checks:
@@ -33,4 +34,12 @@ Useful live smoke checks:
 PYTHONPATH=src python3 -m orthodb_cli.cli version
 PYTHONPATH=src python3 -m orthodb_cli.cli search p450 --take 2 --level 33208 --singlecopy 0.8
 PYTHONPATH=src python3 -m orthodb_cli.cli cache manifest --refresh
+```
+
+Before release, verify a clean venv install:
+
+```bash
+python3 -m venv /tmp/orthodb-cli-install
+/tmp/orthodb-cli-install/bin/python -m pip install .
+/tmp/orthodb-cli-install/bin/orthodb --version
 ```

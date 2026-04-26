@@ -1,6 +1,6 @@
 # Homebrew Packaging
 
-Do not publish the formula until a tagged release exists.
+Formula target for `gumadeiras/homebrew-tap`:
 
 Draft formula shape for `gumadeiras/homebrew-tap`:
 
@@ -10,8 +10,8 @@ class OrthodbCli < Formula
 
   desc "Agent-friendly CLI for cached OrthoDB downloads and live API queries"
   homepage "https://github.com/gumadeiras/orthodb-cli"
-  url "https://github.com/gumadeiras/orthodb-cli/archive/refs/tags/v0.1.0.tar.gz"
-  sha256 "REPLACE_WITH_TAG_ARCHIVE_SHA256"
+  url "https://github.com/gumadeiras/orthodb-cli/releases/download/v0.1.0/orthodb_cli-0.1.0.tar.gz"
+  sha256 "REPLACE_WITH_RELEASE_ASSET_SHA256"
   license "MIT"
 
   depends_on "python@3.13"
@@ -26,10 +26,9 @@ class OrthodbCli < Formula
 end
 ```
 
-Release prep:
+Release/update prep:
 
 1. Tag `orthodb-cli`.
-2. Let the Release workflow build artifacts.
-3. Compute the GitHub tag archive checksum.
+2. Build and upload release artifacts.
+3. Compute the release asset checksum.
 4. Add or update `Formula/orthodb-cli.rb` in `~/git/homebrew-tap`.
-
