@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from orthodb_cli.db import db_status, index_cache
-from orthodb_cli.local import og_search, ortholog_gene_ids, species_search
+from orthodb_cli.local import export_ndjson, fts_match, og_search, ortholog_gene_ids, species_search
 
 
 class DbTests(unittest.TestCase):
@@ -24,7 +24,13 @@ class DbTests(unittest.TestCase):
             self.assertEqual(species_search(cache_dir, "Homo sapiens")[0]["organism_id"], "9606_0")
             self.assertEqual(og_search(cache_dir, "olfactory")[0]["og_id"], "4977at9604")
             self.assertEqual(ortholog_gene_ids(cache_dir, "4977at9604")[0]["gene_id"], "9606_0:0017fc")
-            self.assertTrue(db_status(cache_dir)["exists"])
+            self.assertIn('"og_id": "4977at9604"', export_ndjson(cache_dir, "ogs", "olfactory", limit=1))
+            status = db_status(cache_dir)
+            self.assertTrue(status["exists"])
+            self.assertTrue(status["tables"][0]["fts"])
+
+    def test_fts_match_quotes_terms(self):
+        self.assertEqual(fts_match("Homo sapiens"), '"Homo"* "sapiens"*')
 
 
 def write_gzip(path: Path, text: str) -> None:
@@ -34,4 +40,3 @@ def write_gzip(path: Path, text: str) -> None:
 
 if __name__ == "__main__":
     unittest.main()
-

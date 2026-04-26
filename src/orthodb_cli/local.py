@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import csv
 import gzip
+import json
+import re
 import sqlite3
 from pathlib import Path
 from typing import Iterable
@@ -90,6 +92,18 @@ def ortholog_gene_ids(cache_dir: Path, og_id: str, limit: int = 10_000) -> list[
         return [dict(row) for row in rows]
 
 
+def export_ndjson(cache_dir: Path, table: str, query: str | None = None, limit: int = 1_000) -> str:
+    db_file = cache_dir / "orthodb.sqlite"
+    if not db_file.exists():
+        raise OrthoDBError("SQLite index missing; run `orthodb cache index`")
+    with sqlite3.connect(db_file) as conn:
+        conn.row_factory = sqlite3.Row
+        if not table_exists(conn, table):
+            raise OrthoDBError(f"SQLite table {table!r} missing; run `orthodb cache index`")
+        rows = select_rows(conn, table, query, limit)
+        return "".join(json.dumps(dict(row), sort_keys=True) + "\n" for row in rows)
+
+
 def query_sqlite(cache_dir: Path, table: str, query: str, limit: int) -> list[dict[str, str]] | None:
     db_file = cache_dir / "orthodb.sqlite"
     if not db_file.exists():
@@ -98,11 +112,78 @@ def query_sqlite(cache_dir: Path, table: str, query: str, limit: int) -> list[di
         conn.row_factory = sqlite3.Row
         if not table_exists(conn, table):
             return None
+        fts_results = query_fts(conn, table, query, limit)
+        if fts_results is not None:
+            return fts_results
         columns = [row[1] for row in conn.execute(f"PRAGMA table_info({table})")]
         predicates = " OR ".join(f"{column} LIKE ?" for column in columns)
         params = [f"%{query}%"] * len(columns)
         rows = conn.execute(f"SELECT * FROM {table} WHERE {predicates} LIMIT ?", (*params, limit))
         return [dict(row) for row in rows]
+
+
+def select_rows(conn: sqlite3.Connection, table: str, query: str | None, limit: int) -> Iterable[sqlite3.Row]:
+    if query:
+        fts_rows = select_fts_rows(conn, table, query, limit)
+        if fts_rows is not None:
+            return fts_rows
+        columns = [row[1] for row in conn.execute(f"PRAGMA table_info({table})")]
+        predicates = " OR ".join(f"{column} LIKE ?" for column in columns)
+        params = [f"%{query}%"] * len(columns)
+        return conn.execute(f"SELECT * FROM {table} WHERE {predicates} LIMIT ?", (*params, limit)).fetchall()
+    return conn.execute(f"SELECT * FROM {table} LIMIT ?", (limit,)).fetchall()
+
+
+def query_fts(conn: sqlite3.Connection, table: str, query: str, limit: int) -> list[dict[str, str]] | None:
+    fts_table = f"fts_{table}"
+    if not table_exists(conn, fts_table):
+        return None
+    match = fts_match(query)
+    if not match:
+        return None
+    try:
+        rows = conn.execute(
+            f"""
+            SELECT {table}.*
+            FROM {fts_table}
+            JOIN {table} ON {table}.rowid = {fts_table}.rowid
+            WHERE {fts_table} MATCH ?
+            ORDER BY bm25({fts_table})
+            LIMIT ?
+            """,
+            (match, limit),
+        )
+        return [dict(row) for row in rows]
+    except sqlite3.OperationalError:
+        return None
+
+
+def select_fts_rows(conn: sqlite3.Connection, table: str, query: str, limit: int) -> list[sqlite3.Row] | None:
+    fts_table = f"fts_{table}"
+    if not table_exists(conn, fts_table):
+        return None
+    match = fts_match(query)
+    if not match:
+        return None
+    try:
+        return conn.execute(
+            f"""
+            SELECT {table}.*
+            FROM {fts_table}
+            JOIN {table} ON {table}.rowid = {fts_table}.rowid
+            WHERE {fts_table} MATCH ?
+            ORDER BY bm25({fts_table})
+            LIMIT ?
+            """,
+            (match, limit),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return None
+
+
+def fts_match(query: str) -> str:
+    terms = re.findall(r"[A-Za-z0-9_:-]+", query)
+    return " ".join(f'"{term}"*' for term in terms)
 
 
 def table_exists(conn: sqlite3.Connection, table: str) -> bool:

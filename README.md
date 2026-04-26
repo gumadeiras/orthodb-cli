@@ -38,6 +38,7 @@ orthodb cache index species
 orthodb cache sync minimal --index
 orthodb local species "Homo sapiens"
 orthodb local og "olfactory"
+orthodb export ogs --query "olfactory receptor" --limit 10
 ```
 
 `/blast`, `/fasta`, and `/tab` calls are rate-limited to one request per
@@ -92,7 +93,11 @@ orthodb local species "Homo sapiens"
 orthodb local og "Cytochrome P450"
 orthodb local gene P12345
 orthodb local orthologs 4977at9604
+orthodb export species --query "Homo sapiens" --limit 2
 ```
+
+`export` emits newline-delimited JSON from the local SQLite index, capped by
+`--limit`.
 
 ## Source Notes
 

@@ -19,6 +19,7 @@ class DatasetSchema:
     table: str
     columns: tuple[str, ...]
     indexes: tuple[tuple[str, ...], ...]
+    search_columns: tuple[str, ...] = ()
 
 
 SCHEMAS: dict[str, DatasetSchema] = {
@@ -35,18 +36,21 @@ SCHEMAS: dict[str, DatasetSchema] = {
             "mapping_type",
         ),
         indexes=(("organism_id",), ("ncbi_tax_id",), ("scientific_name",)),
+        search_columns=("ncbi_tax_id", "organism_id", "scientific_name", "assembly_id"),
     ),
     "levels": DatasetSchema(
         alias="levels",
         table="levels",
         columns=("level_tax_id", "scientific_name", "gene_count", "og_count", "species_count"),
         indexes=(("level_tax_id",), ("scientific_name",)),
+        search_columns=("level_tax_id", "scientific_name"),
     ),
     "ogs": DatasetSchema(
         alias="ogs",
         table="ogs",
         columns=("og_id", "level_tax_id", "name"),
         indexes=(("og_id",), ("level_tax_id",), ("name",)),
+        search_columns=("og_id", "level_tax_id", "name"),
     ),
     "og2genes": DatasetSchema(
         alias="og2genes",
@@ -71,6 +75,7 @@ SCHEMAS: dict[str, DatasetSchema] = {
             "chromosome",
         ),
         indexes=(("gene_id",), ("organism_id",), ("uniprot_id",), ("ncbi_gene",)),
+        search_columns=("gene_id", "organism_id", "original_sequence_id", "synonyms", "uniprot_id", "ensembl_ids", "ncbi_gene", "description"),
     ),
 }
 
@@ -128,8 +133,20 @@ def index_file(conn: sqlite3.Connection, schema: DatasetSchema, path: Path) -> i
     for columns in schema.indexes:
         index_name = f"idx_{schema.table}_{'_'.join(columns)}"
         conn.execute(f"CREATE INDEX {index_name} ON {schema.table} ({', '.join(columns)})")
+    if schema.search_columns:
+        create_fts_index(conn, schema)
     conn.commit()
     return count
+
+
+def create_fts_index(conn: sqlite3.Connection, schema: DatasetSchema) -> None:
+    fts_table = f"fts_{schema.table}"
+    conn.execute(f"DROP TABLE IF EXISTS {fts_table}")
+    columns_sql = ", ".join(schema.search_columns)
+    conn.execute(f"CREATE VIRTUAL TABLE {fts_table} USING fts5({columns_sql}, content='{schema.table}')")
+    conn.execute(
+        f"INSERT INTO {fts_table}(rowid, {columns_sql}) SELECT rowid, {columns_sql} FROM {schema.table}"
+    )
 
 
 def normalize_row(row: Sequence[str], width: int) -> tuple[str, ...]:
@@ -147,7 +164,14 @@ def db_status(cache_dir: Path) -> dict[str, object]:
         for schema in SCHEMAS.values():
             if table_exists(conn, schema.table):
                 count = conn.execute(f"SELECT COUNT(*) FROM {schema.table}").fetchone()[0]
-                tables.append({"dataset": schema.alias, "table": schema.table, "rows": count})
+                tables.append(
+                    {
+                        "dataset": schema.alias,
+                        "table": schema.table,
+                        "rows": count,
+                        "fts": table_exists(conn, f"fts_{schema.table}"),
+                    }
+                )
     return {"path": str(path), "exists": True, "tables": tables}
 
 
@@ -163,4 +187,3 @@ def require_table(conn: sqlite3.Connection, table: str) -> None:
 
 def rows_to_dicts(rows: Iterable[sqlite3.Row]) -> list[dict[str, str]]:
     return [dict(row) for row in rows]
-

@@ -19,7 +19,7 @@ from .cache import (
 from .client import API_BASE, OrthoDBClient
 from .db import db_status, index_cache
 from .errors import OrthoDBError
-from .local import gene_search, og_search, ortholog_gene_ids, species_search
+from .local import export_ndjson, gene_search, og_search, ortholog_gene_ids, species_search
 
 SYNC_PROFILES = {
     "minimal": ("species", "levels", "level2species"),
@@ -59,6 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_api_commands(subcommands)
     add_cache_commands(subcommands)
     add_local_commands(subcommands)
+    add_export_commands(subcommands)
     return parser
 
 
@@ -197,6 +198,15 @@ def add_local_commands(subcommands: argparse._SubParsersAction[argparse.Argument
     orthologs.set_defaults(handler=lambda args, client, cache_dir: ortholog_gene_ids(cache_dir, args.og_id, args.limit))
 
 
+def add_export_commands(subcommands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    export = subcommands.add_parser("export", help="Export indexed local data.")
+    export.add_argument("table", choices=["species", "levels", "ogs", "og2genes", "genes"])
+    export.add_argument("--query", help="Optional full-text/substring filter.")
+    export.add_argument("--limit", type=int, default=1_000)
+    export.add_argument("--output", dest="file_output")
+    export.set_defaults(handler=cmd_export)
+
+
 def cmd_version(args: argparse.Namespace, client: OrthoDBClient, cache_dir: Path) -> str:
     return client.request("orthodb_release_id").strip().strip('"')
 
@@ -311,6 +321,11 @@ def cmd_cache_index(args: argparse.Namespace, client: OrthoDBClient, cache_dir: 
     if not results:
         raise OrthoDBError("no supported downloaded datasets found to index")
     return results
+
+
+def cmd_export(args: argparse.Namespace, client: OrthoDBClient, cache_dir: Path) -> Any:
+    text = export_ndjson(cache_dir, args.table, args.query, args.limit)
+    return write_or_return_text(text, args.file_output)
 
 
 def indexable_aliases(datasets: Iterable[str]) -> list[str]:
