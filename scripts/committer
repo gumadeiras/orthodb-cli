@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+set -f
+
+usage() {
+    cat >&2 <<'EOF'
+Usage:
+  ./scripts/committer "commit message" "file" ["file" ...]
+EOF
+    exit 2
+}
+
+if [[ $# -lt 2 ]]; then
+    usage
+fi
+
+COMMIT_MESSAGE="$1"
+shift
+
+if [[ "$COMMIT_MESSAGE" != *[![:space:]]* ]]; then
+    echo "error: commit message must not be empty" >&2
+    exit 1
+fi
+
+if ! git diff --staged --quiet; then
+    echo "error: existing staged changes detected; commit or unstage first" >&2
+    exit 1
+fi
+
+FILES=("$@")
+for file in "${FILES[@]}"; do
+    if [[ "$file" == "." ]]; then
+        echo 'error: "." is not allowed; list specific paths' >&2
+        exit 1
+    fi
+    if [[ ! -e "$file" ]] && ! git ls-files --error-unmatch -- "$file" >/dev/null 2>&1; then
+        echo "error: file not found: $file" >&2
+        exit 1
+    fi
+done
+
+if git rev-parse --verify HEAD >/dev/null 2>&1; then
+    git restore --staged :/
+fi
+git add --force -- "${FILES[@]}"
+
+if git diff --staged --quiet; then
+    echo "error: no staged changes for selected paths" >&2
+    exit 1
+fi
+
+git commit -m "$COMMIT_MESSAGE" -- "${FILES[@]}"
+echo "Committed \"$COMMIT_MESSAGE\" with ${#FILES[@]} path(s)."
