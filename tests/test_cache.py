@@ -1,6 +1,7 @@
 import unittest
 
 from orthodb_cli.cache import parse_manifest, resolve_dataset
+from orthodb_cli.cli import is_large
 
 
 HTML = """
@@ -35,6 +36,10 @@ class CacheTests(unittest.TestCase):
         entry = resolve_dataset(parse_manifest(HTML), "species")
 
         self.assertEqual(entry.name, "odb12v2_species.tab.gz")
+
+    def test_large_size_detection(self):
+        self.assertTrue(is_large("4.5 GB"))
+        self.assertFalse(is_large("128.2 MB"))
 
 
 if __name__ == "__main__":

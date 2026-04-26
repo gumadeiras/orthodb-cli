@@ -34,8 +34,10 @@ orthodb orthologs 4977at9604 --species 9606_0,10090_0
 orthodb fasta 4977at9604 --species 9606_0 --output group.fa
 orthodb cache manifest
 orthodb cache download species
+orthodb cache plan orthologs
 orthodb cache index species
 orthodb cache sync minimal --index
+orthodb resolve 4977at9604
 orthodb local species "Homo sapiens"
 orthodb local og "olfactory"
 orthodb export ogs --query "olfactory receptor" --limit 10
@@ -98,6 +100,14 @@ orthodb export species --query "Homo sapiens" --limit 2
 
 `export` emits newline-delimited JSON from the local SQLite index, capped by
 `--limit`.
+
+Resolve IDs before choosing a query path:
+
+```bash
+orthodb resolve 4977at9604
+orthodb resolve 9606_0:0017fc
+orthodb resolve P12345
+```
 
 ## Source Notes
 

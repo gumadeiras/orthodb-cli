@@ -10,6 +10,8 @@ checksum-verified flat-file caching.
 - Keep runtime dependencies at zero unless there is a strong packaging or
   performance reason.
 - Keep command output machine-readable. Prefer JSON for structured data.
+- Add resolver/export surfaces when they reduce the number of guesses an agent
+  must make.
 - Respect OrthoDB's published 1 request/second limit for `/blast`, `/fasta`,
   and `/tab`.
 - Do not auto-download multi-GB flat files. Show manifest/status first, then

@@ -19,6 +19,7 @@ from .cache import (
 from .client import API_BASE, OrthoDBClient
 from .db import db_status, index_cache
 from .errors import OrthoDBError
+from .identify import identify
 from .local import export_ndjson, gene_search, og_search, ortholog_gene_ids, species_search
 
 SYNC_PROFILES = {
@@ -60,6 +61,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_cache_commands(subcommands)
     add_local_commands(subcommands)
     add_export_commands(subcommands)
+    add_resolve_commands(subcommands)
     return parser
 
 
@@ -151,6 +153,11 @@ def add_cache_commands(subcommands: argparse._SubParsersAction[argparse.Argument
     status.add_argument("--refresh", action="store_true")
     status.set_defaults(handler=cmd_cache_status)
 
+    plan = cache_sub.add_parser("plan", help="Show what a sync profile would download.")
+    plan.add_argument("profile", choices=sorted(SYNC_PROFILES))
+    plan.add_argument("--include-large", action="store_true", help="Include downloads larger than 1 GB in the plan.")
+    plan.set_defaults(handler=cmd_cache_plan)
+
     download = cache_sub.add_parser("download", help="Download one manifest dataset by alias or filename.")
     download.add_argument("dataset")
     download.add_argument("--no-verify", action="store_true")
@@ -205,6 +212,12 @@ def add_export_commands(subcommands: argparse._SubParsersAction[argparse.Argumen
     export.add_argument("--limit", type=int, default=1_000)
     export.add_argument("--output", dest="file_output")
     export.set_defaults(handler=cmd_export)
+
+
+def add_resolve_commands(subcommands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    resolve = subcommands.add_parser("resolve", help="Classify an OrthoDB id or query string.")
+    resolve.add_argument("value")
+    resolve.set_defaults(handler=lambda args, client, cache_dir: identify(args.value, cache_dir))
 
 
 def cmd_version(args: argparse.Namespace, client: OrthoDBClient, cache_dir: Path) -> str:
@@ -290,6 +303,28 @@ def cmd_cache_status(args: argparse.Namespace, client: OrthoDBClient, cache_dir:
     if args.refresh:
         save_manifest(entries, cache_dir)
     return cache_status(cache_dir, entries)
+
+
+def cmd_cache_plan(args: argparse.Namespace, client: OrthoDBClient, cache_dir: Path) -> Any:
+    entries = load_manifest(cache_dir)
+    plan = []
+    for dataset in SYNC_PROFILES[args.profile]:
+        entry = resolve_dataset(entries, dataset)
+        path = cache_dir / entry.name
+        large = is_large(entry.size)
+        plan.append(
+            {
+                "dataset": dataset,
+                "name": entry.name,
+                "size": entry.size,
+                "description": entry.description,
+                "downloaded": path.exists(),
+                "path": str(path),
+                "will_download": (not path.exists()) and (args.include_large or not large),
+                "requires_include_large": large and not args.include_large,
+            }
+        )
+    return {"profile": args.profile, "datasets": plan}
 
 
 def cmd_cache_download(args: argparse.Namespace, client: OrthoDBClient, cache_dir: Path) -> Any:
