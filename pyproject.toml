@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orthodb-cli"
+dynamic = ["version"]
+description = "Agent-friendly CLI for cached OrthoDB downloads and live API queries."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Gustavo Madeira Santana" }]
+keywords = ["orthodb", "orthologs", "bioinformatics", "cli"]
+dependencies = []
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+[project.optional-dependencies]
+release = [
+  "build>=1.2.2",
+  "twine>=6.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/gumadeiras/orthodb-cli"
+Repository = "https://github.com/gumadeiras/orthodb-cli"
+Issues = "https://github.com/gumadeiras/orthodb-cli/issues"
+
+[project.scripts]
+orthodb = "orthodb_cli.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.dynamic]
+version = {attr = "orthodb_cli.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
