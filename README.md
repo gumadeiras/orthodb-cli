@@ -120,7 +120,7 @@ orthodb resolve P12345
 
 ## Release
 
-Current release: `v0.1.0`.
+Current release: `v0.1.1`.
 
 Release artifacts are attached to GitHub releases for Homebrew packaging:
 
