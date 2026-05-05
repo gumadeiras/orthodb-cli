@@ -25,6 +25,18 @@ brew tap gumadeiras/tap
 brew install orthodb-cli
 ```
 
+PyPI with `pipx`:
+
+```bash
+pipx install orthodb-cli
+```
+
+PyPI with plain `pip`:
+
+```bash
+python3 -m pip install orthodb-cli
+```
+
 From source:
 
 ```bash
