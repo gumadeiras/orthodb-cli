@@ -134,6 +134,15 @@ orthodb resolve P12345
 
 Current release: `v0.1.1`.
 
+Tag pushes like `vX.Y.Z` run the release workflow: build artifacts, create a
+GitHub release, publish to PyPI, and update `gumadeiras/homebrew-tap`.
+
+Release prerequisites:
+
+- PyPI trusted publishing configured for this repo.
+- `HOMEBREW_TAP_TOKEN` repository secret can write to
+  `gumadeiras/homebrew-tap`.
+
 Release artifacts are attached to GitHub releases for Homebrew packaging:
 
 ```text
