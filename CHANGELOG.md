@@ -5,6 +5,7 @@
 ### Changes
 
 - Updated release automation to the current GitHub Actions checkout, Python setup, and release actions.
+- Added a local release wrapper for version sync, package validation, tagging, and release workflow verification.
 
 ## 0.1.1 - 2026-05-05
 

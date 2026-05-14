@@ -4,6 +4,11 @@
 
 - Commit with `scripts/committer "<subject>" -- <path>...`; it stages only listed paths. Use `--body` or `--body-file` for commit bodies.
 
+## Release
+
+- Use `./scripts/release check <version>` for local preflight.
+- Use `./scripts/release run <version>` only after explicit release approval.
+- Tag pushes run the release workflow, publish GitHub assets, publish PyPI, and update `gumadeiras/homebrew-tap`.
 
 ## Project
 
