@@ -53,7 +53,7 @@ def manifest_path(cache_dir: Path) -> Path:
 
 
 def fetch_manifest(url: str = MANIFEST_URL, timeout: float = 60.0) -> list[ManifestEntry]:
-    req = Request(url, headers={"User-Agent": "orthodb-cli/0.1"})
+    req = Request(url, headers={"User-Agent": "orthodb/0.1"})
     try:
         with urlopen(req, timeout=timeout) as response:
             html = response.read().decode("utf-8", errors="replace")
@@ -139,7 +139,7 @@ def download_entry(entry: ManifestEntry, cache_dir: Path, verify: bool = True) -
     fd, tmp_name = tempfile.mkstemp(prefix=f".{entry.name}.", suffix=".part", dir=cache_dir)
     os.close(fd)
     tmp_path = Path(tmp_name)
-    req = Request(entry.url, headers={"User-Agent": "orthodb-cli/0.1"})
+    req = Request(entry.url, headers={"User-Agent": "orthodb/0.1"})
     try:
         with urlopen(req, timeout=60) as response, tmp_path.open("wb") as out:
             while True:

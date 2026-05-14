@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEFAULT_REMOTE="${ORTHODB_RELEASE_REMOTE:-origin}"
 PYTHON="${PYTHON:-python3}"
-PACKAGE_DIST="orthodb_cli"
+PACKAGE_DIST="orthodb"
 CLI_BIN="orthodb"
 VERSION_FILES=(src/orthodb_cli/__init__.py)
 TEST_COMMAND=(python -m unittest discover -s tests)

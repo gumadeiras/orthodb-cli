@@ -12,7 +12,7 @@
 
 ## Project
 
-`orthodb-cli` is a stdlib-only Python CLI for OrthoDB v12 live API queries and
+`orthodb` is a stdlib-only Python CLI for OrthoDB v12 live API queries and
 checksum-verified flat-file caching.
 
 ## Rules
@@ -49,9 +49,9 @@ PYTHONPATH=src python3 -m orthodb_cli.cli cache manifest --refresh
 Before release, verify a clean venv install:
 
 ```bash
-python3 -m venv /tmp/orthodb-cli-install
-/tmp/orthodb-cli-install/bin/python -m pip install .
-/tmp/orthodb-cli-install/bin/orthodb --version
+python3 -m venv /tmp/orthodb-install
+/tmp/orthodb-install/bin/python -m pip install .
+/tmp/orthodb-install/bin/orthodb --version
 ```
 
 ## Changelog

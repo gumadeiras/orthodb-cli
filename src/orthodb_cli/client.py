@@ -34,7 +34,7 @@ class OrthoDBClient:
             self._rate_limit()
 
         url = self.build_url(command, params)
-        req = Request(url, headers={"User-Agent": "orthodb-cli/0.1"})
+        req = Request(url, headers={"User-Agent": "orthodb/0.1"})
         try:
             with urlopen(req, timeout=self.timeout) as response:
                 content_type = response.headers.get("Content-Type", "")
@@ -78,4 +78,3 @@ def clean_params(params: Mapping[str, Any]) -> dict[str, str]:
         else:
             cleaned[key] = str(value)
     return cleaned
-

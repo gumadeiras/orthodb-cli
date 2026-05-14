@@ -50,7 +50,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="orthodb", description="Query and cache OrthoDB data.")
-    parser.add_argument("--version", action="version", version=f"orthodb-cli {__version__}")
+    parser.add_argument("--version", action="version", version=f"orthodb {__version__}")
     parser.add_argument("--api-base", default=API_BASE, help=f"OrthoDB API base URL. Default: {API_BASE}")
     parser.add_argument("--cache-dir", default=str(default_cache_dir()), help="Cache directory.")
     parser.add_argument("--timeout", type=float, default=60.0, help="HTTP timeout in seconds.")

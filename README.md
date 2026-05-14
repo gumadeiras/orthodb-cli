@@ -1,4 +1,4 @@
-# orthodb-cli
+# orthodb
 
 Agent-friendly CLI for OrthoDB v12.
 
@@ -22,19 +22,19 @@ Homebrew:
 
 ```bash
 brew tap gumadeiras/tap
-brew install orthodb-cli
+brew install orthodb
 ```
 
 PyPI with `pipx`:
 
 ```bash
-pipx install orthodb-cli
+pipx install orthodb
 ```
 
 PyPI with plain `pip`:
 
 ```bash
-python3 -m pip install orthodb-cli
+python3 -m pip install orthodb
 ```
 
 From source:
