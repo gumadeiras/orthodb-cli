@@ -1,5 +1,8 @@
 # orthodb-cli
 
+> This package has been renamed. Install `orthodb` now:
+> `pipx install orthodb`
+
 Agent-friendly CLI for OrthoDB v12.
 
 Repo:
