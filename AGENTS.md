@@ -28,6 +28,8 @@ checksum-verified flat-file caching.
   require an explicit `cache download`.
 - Keep SQLite indexes derived from cached source files; raw downloads remain
   the source of truth.
+- Store raw downloads and indexes in the OS application-data directory by
+  default; `--cache-dir` remains the explicit override.
 - If flat-file schemas change, update local parsers and docs together.
 
 ## Gates

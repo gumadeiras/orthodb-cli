@@ -69,16 +69,13 @@ second, matching OrthoDB's published API guidance.
 
 ## Cache
 
-Default cache root:
+Downloaded flat files and their derived SQLite index are persistent data. The
+default root is:
 
 ```text
-$XDG_CACHE_HOME/orthodb-cli
-```
-
-or:
-
-```text
-~/.cache/orthodb-cli
+~/Library/Application Support/orthodb                 # macOS
+$XDG_DATA_HOME/orthodb or ~/.local/share/orthodb      # Linux
+%LOCALAPPDATA%\orthodb                                # Windows
 ```
 
 Override with:

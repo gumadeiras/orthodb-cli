@@ -4,6 +4,8 @@
 
 ### Changes
 
+- Moved downloaded OrthoDB flat files and their derived SQLite index to the
+  operating system's persistent application-data directory by default.
 - Renamed the published PyPI and Homebrew package to `orthodb`.
 - Updated release automation to the current GitHub Actions checkout, Python setup, and release actions.
 - Added a local release wrapper for version sync, package validation, tagging, and release workflow verification.

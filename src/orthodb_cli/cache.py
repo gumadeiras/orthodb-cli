@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
 import tempfile
 from dataclasses import asdict, dataclass
@@ -13,6 +12,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from .errors import OrthoDBError
+from .paths import default_data_dir
 
 MANIFEST_URL = "https://data.orthodb.org/current/download/odb_data_dump"
 DATASET_ALIASES = {
@@ -42,10 +42,7 @@ class ManifestEntry:
 
 
 def default_cache_dir() -> Path:
-    root = os.environ.get("XDG_CACHE_HOME")
-    if root:
-        return Path(root) / "orthodb-cli"
-    return Path.home() / ".cache" / "orthodb-cli"
+    return default_data_dir()
 
 
 def manifest_path(cache_dir: Path) -> Path:
