@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -87,9 +88,13 @@ def db_path(cache_dir: Path) -> Path:
 def connect(cache_dir: Path) -> sqlite3.Connection:
     cache_dir.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path(cache_dir))
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA synchronous=NORMAL")
+    try:
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+    except BaseException:
+        conn.close()
+        raise
     return conn
 
 
@@ -100,7 +105,7 @@ def index_cache(cache_dir: Path, aliases: Sequence[str] | None = None) -> list[d
         raise OrthoDBError(f"unsupported index dataset(s): {', '.join(unknown)}")
 
     results = []
-    with connect(cache_dir) as conn:
+    with closing(connect(cache_dir)) as conn, conn:
         for alias in selected:
             path = find_cached_file(cache_dir, alias)
             if path is None:
@@ -160,7 +165,7 @@ def db_status(cache_dir: Path) -> dict[str, object]:
     if not path.exists():
         return {"path": str(path), "exists": False, "tables": []}
     tables = []
-    with connect(cache_dir) as conn:
+    with closing(connect(cache_dir)) as conn, conn:
         for schema in SCHEMAS.values():
             if table_exists(conn, schema.table):
                 count = conn.execute(f"SELECT COUNT(*) FROM {schema.table}").fetchone()[0]

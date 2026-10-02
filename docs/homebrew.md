@@ -1,34 +1,18 @@
 # Homebrew Packaging
 
-Formula target for `gumadeiras/homebrew-tap`:
+Install from the tap:
 
-Draft formula shape for `gumadeiras/homebrew-tap`:
-
-```ruby
-class Orthodb < Formula
-  include Language::Python::Virtualenv
-
-  desc "Agent-friendly CLI for cached OrthoDB downloads and live API queries"
-  homepage "https://github.com/gumadeiras/orthodb-cli"
-  url "https://github.com/gumadeiras/orthodb-cli/releases/download/v0.1.0/orthodb-0.1.0.tar.gz"
-  sha256 "REPLACE_WITH_RELEASE_ASSET_SHA256"
-  license "MIT"
-
-  depends_on "python@3.13"
-
-  def install
-    virtualenv_install_with_resources
-  end
-
-  test do
-    assert_match "orthodb", shell_output("#{bin}/orthodb --version")
-  end
-end
+```bash
+brew tap gumadeiras/tap
+brew install orthodb
 ```
 
-Release/update prep:
+The maintained formula is
+[Formula/orthodb.rb](https://github.com/gumadeiras/homebrew-tap/blob/main/Formula/orthodb.rb).
+It installs the package from a GitHub release source archive into a Python
+virtual environment.
 
-1. Tag `orthodb`.
-2. Build and upload release artifacts.
-3. Compute the release asset checksum.
-4. Add or update `Formula/orthodb.rb` in `~/git/homebrew-tap`.
+The release workflow updates the formula URL and SHA256 after the GitHub and
+PyPI release jobs succeed. Use [the release wrapper](release.md) for normal
+releases. The source archive checksum is checked by Homebrew; downloaded OrthoDB
+datasets use the separate MD5 checksums from the OrthoDB manifest.

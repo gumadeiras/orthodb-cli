@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
@@ -79,7 +80,7 @@ def local_hints(value: str, kind: str, cache_dir: Path) -> dict[str, Any]:
     db_file = cache_dir / "orthodb.sqlite"
     if not db_file.exists():
         return {"indexed": False}
-    with sqlite3.connect(db_file) as conn:
+    with closing(sqlite3.connect(db_file)) as conn, conn:
         conn.row_factory = sqlite3.Row
         if kind == "orthologous_group":
             return {"indexed": True, "ogs": lookup_one(conn, "ogs", "og_id", value), "og2genes_count": count_matches(conn, "og2genes", "og_id", value)}

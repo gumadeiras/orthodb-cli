@@ -5,6 +5,7 @@ import gzip
 import json
 import re
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 from typing import Iterable
 
@@ -51,7 +52,7 @@ def ortholog_gene_ids(cache_dir: Path, og_id: str, limit: int = 10_000) -> list[
     if not db_file.exists():
         raise OrthoDBError("SQLite index missing; run `orthodb cache index og2genes`")
 
-    with sqlite3.connect(db_file) as conn:
+    with closing(sqlite3.connect(db_file)) as conn, conn:
         conn.row_factory = sqlite3.Row
         if not table_exists(conn, "og2genes"):
             raise OrthoDBError("og2genes index missing; run `orthodb cache download og2genes` and `orthodb cache index og2genes`")
@@ -96,7 +97,7 @@ def export_ndjson(cache_dir: Path, table: str, query: str | None = None, limit: 
     db_file = cache_dir / "orthodb.sqlite"
     if not db_file.exists():
         raise OrthoDBError("SQLite index missing; run `orthodb cache index`")
-    with sqlite3.connect(db_file) as conn:
+    with closing(sqlite3.connect(db_file)) as conn, conn:
         conn.row_factory = sqlite3.Row
         if not table_exists(conn, table):
             raise OrthoDBError(f"SQLite table {table!r} missing; run `orthodb cache index`")
@@ -108,7 +109,7 @@ def query_sqlite(cache_dir: Path, table: str, query: str, limit: int) -> list[di
     db_file = cache_dir / "orthodb.sqlite"
     if not db_file.exists():
         return None
-    with sqlite3.connect(db_file) as conn:
+    with closing(sqlite3.connect(db_file)) as conn, conn:
         conn.row_factory = sqlite3.Row
         if not table_exists(conn, table):
             return None

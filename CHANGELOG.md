@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Fixes
+
+- Fixed cache downloads and sync failing with a missing-import error.
+- Close download handles and remove partial files when a download, checksum
+  check, or file replacement fails, including interrupted downloads.
+- Apply `--timeout` to cache manifest requests and downloads; reject timeouts
+  that are not finite positive numbers.
+- Preserve the original download error and report the partial-file path if
+  cleanup also fails.
+- Report expected file and HTTP connection errors on stderr without a traceback.
+- Select the correct source file for dataset aliases and reject ambiguous
+  cached versions. Rebuild any species index previously created from
+  level-to-species data with `orthodb cache index species`.
+- Close SQLite connections after indexing, queries, exports, and ID resolution.
+
 ### Changes
 
 - Moved downloaded OrthoDB flat files and their derived SQLite index to the

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 from typing import Any, Iterable
@@ -32,16 +33,19 @@ SYNC_PROFILES = {
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if not math.isfinite(args.timeout) or args.timeout <= 0:
+        parser.error("--timeout must be a finite positive number")
     client = OrthoDBClient(base_url=args.api_base, timeout=args.timeout)
     cache_dir = Path(args.cache_dir).expanduser()
     try:
         result = args.handler(args, client, cache_dir)
-    except OrthoDBError as exc:
-        print(f"orthodb: error: {exc}", file=sys.stderr)
-        return 1
-    except KeyboardInterrupt:
-        print("orthodb: interrupted", file=sys.stderr)
-        return 130
+    except (OrthoDBError, OSError, KeyboardInterrupt) as exc:
+        interrupted = isinstance(exc, KeyboardInterrupt)
+        message = "interrupted" if interrupted else f"error: {exc}"
+        print(f"orthodb: {message}", file=sys.stderr)
+        for note in getattr(exc, "__notes__", ()):
+            print(f"orthodb: {note}", file=sys.stderr)
+        return 130 if interrupted else 1
 
     if result is not None:
         emit(result, args.output)
@@ -153,14 +157,14 @@ def add_cache_commands(subcommands: argparse._SubParsersAction[argparse.Argument
     status.add_argument("--refresh", action="store_true")
     status.set_defaults(handler=cmd_cache_status)
 
-    plan = cache_sub.add_parser("plan", help="Show what a sync profile would download.")
+    plan = cache_sub.add_parser("plan", help="Plan a sync profile from cached file presence.")
     plan.add_argument("profile", choices=sorted(SYNC_PROFILES))
     plan.add_argument("--include-large", action="store_true", help="Include downloads larger than 1 GB in the plan.")
     plan.set_defaults(handler=cmd_cache_plan)
 
     download = cache_sub.add_parser("download", help="Download one manifest dataset by alias or filename.")
     download.add_argument("dataset")
-    download.add_argument("--no-verify", action="store_true")
+    download.add_argument("--no-verify", action="store_true", help="Skip checksum verification, including for existing files.")
     download.set_defaults(handler=cmd_cache_download)
 
     sync = cache_sub.add_parser("sync", help="Download a curated dataset profile.")
@@ -293,20 +297,20 @@ def cmd_api(args: argparse.Namespace, client: OrthoDBClient, cache_dir: Path) ->
 
 
 def cmd_cache_manifest(args: argparse.Namespace, client: OrthoDBClient, cache_dir: Path) -> Any:
-    entries = fetch_manifest() if args.refresh else load_manifest(cache_dir)
+    entries = fetch_manifest(timeout=args.timeout) if args.refresh else load_manifest(cache_dir, timeout=args.timeout)
     save_manifest(entries, cache_dir)
     return [entry.__dict__ for entry in entries]
 
 
 def cmd_cache_status(args: argparse.Namespace, client: OrthoDBClient, cache_dir: Path) -> Any:
-    entries = fetch_manifest() if args.refresh else load_manifest(cache_dir)
+    entries = fetch_manifest(timeout=args.timeout) if args.refresh else load_manifest(cache_dir, timeout=args.timeout)
     if args.refresh:
         save_manifest(entries, cache_dir)
     return cache_status(cache_dir, entries)
 
 
 def cmd_cache_plan(args: argparse.Namespace, client: OrthoDBClient, cache_dir: Path) -> Any:
-    entries = load_manifest(cache_dir)
+    entries = load_manifest(cache_dir, timeout=args.timeout)
     plan = []
     for dataset in SYNC_PROFILES[args.profile]:
         entry = resolve_dataset(entries, dataset)
@@ -328,14 +332,14 @@ def cmd_cache_plan(args: argparse.Namespace, client: OrthoDBClient, cache_dir: P
 
 
 def cmd_cache_download(args: argparse.Namespace, client: OrthoDBClient, cache_dir: Path) -> Any:
-    entries = load_manifest(cache_dir)
+    entries = load_manifest(cache_dir, timeout=args.timeout)
     entry = resolve_dataset(entries, args.dataset)
-    path = download_entry(entry, cache_dir, verify=not args.no_verify)
+    path = download_entry(entry, cache_dir, verify=not args.no_verify, timeout=args.timeout)
     return {"name": entry.name, "path": str(path), "md5": entry.md5}
 
 
 def cmd_cache_sync(args: argparse.Namespace, client: OrthoDBClient, cache_dir: Path) -> Any:
-    entries = load_manifest(cache_dir)
+    entries = load_manifest(cache_dir, timeout=args.timeout)
     downloaded = []
     skipped = []
     for dataset in SYNC_PROFILES[args.profile]:
@@ -343,7 +347,7 @@ def cmd_cache_sync(args: argparse.Namespace, client: OrthoDBClient, cache_dir: P
         if is_large(entry.size) and not args.include_large:
             skipped.append({"dataset": dataset, "name": entry.name, "size": entry.size, "reason": "requires --include-large"})
             continue
-        path = download_entry(entry, cache_dir)
+        path = download_entry(entry, cache_dir, timeout=args.timeout)
         downloaded.append({"dataset": dataset, "name": entry.name, "size": entry.size, "path": str(path)})
 
     indexed = index_cache(cache_dir, indexable_aliases(item["dataset"] for item in downloaded)) if args.index else []

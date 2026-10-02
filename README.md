@@ -93,6 +93,39 @@ https://data.orthodb.org/current/download/odb_data_dump
 Large data files are intentionally not auto-downloaded. Use
 `orthodb cache manifest` first, then download a named dataset.
 
+`--timeout` must be a finite positive number of seconds. It applies to live
+API calls, manifest requests, and flat-file downloads. For example:
+
+```bash
+orthodb --timeout 120 cache download species
+```
+
+Downloads verify the file against the manifest's MD5 by default. A matching
+cached file is reused; a corrupt file is downloaded again. The new file replaces
+the old file only after it is closed and passes verification. The option
+`--no-verify` on `cache download` skips checksum checks for both new and existing files. The `md5`
+field in download output is the expected manifest checksum; it does not prove
+integrity when verification is disabled.
+
+`cache status` and `cache plan` check file presence without reading large files
+to compute checksums. Their `downloaded` fields mean that a path exists.
+`cache plan` sets `will_download` from presence and the large-file gate; sync
+still verifies existing files and can replace corrupt files that the plan lists
+as downloaded. Sync output's `downloaded` list includes reused files.
+
+An interrupted download returns exit code 130. Temporary files are closed and
+removed on failure. If removal also fails, the original error is preserved and
+the remaining partial-file path is reported on stderr.
+
+Aliases match complete dataset filenames, so `species` cannot select
+`level2species`, and `aa_fasta` cannot select `og_aa_fasta`. Multiple cached
+versions of the same dataset are rejected; keep one version per cache directory.
+If an older version built a species index from the wrong file, rebuild it:
+
+```bash
+orthodb cache index species
+```
+
 Curated sync profiles:
 
 - `minimal`: species, levels, level-to-species
@@ -129,7 +162,8 @@ orthodb resolve P12345
 
 ## Release
 
-Current release: `v0.1.1`.
+Published versions are listed on the
+[releases page](https://github.com/gumadeiras/orthodb-cli/releases).
 
 Tag pushes like `vX.Y.Z` run the release workflow: build artifacts, create a
 GitHub release, publish to PyPI, and update `gumadeiras/homebrew-tap`.
@@ -145,6 +179,10 @@ Release artifacts are attached to GitHub releases for Homebrew packaging:
 ```text
 https://github.com/gumadeiras/orthodb-cli/releases
 ```
+
+Use the local wrapper described in [the release guide](docs/release.md).
+Homebrew installation and formula updates are described in
+[the packaging guide](docs/homebrew.md).
 
 ## Source Notes
 

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 import tempfile
 from dataclasses import asdict, dataclass
 from html.parser import HTMLParser
@@ -85,22 +84,26 @@ def save_manifest(entries: Iterable[ManifestEntry], cache_dir: Path) -> Path:
     return path
 
 
-def load_manifest(cache_dir: Path) -> list[ManifestEntry]:
+def load_manifest(cache_dir: Path, *, timeout: float = 60.0) -> list[ManifestEntry]:
     path = manifest_path(cache_dir)
     if not path.exists():
-        entries = fetch_manifest()
+        entries = fetch_manifest(timeout=timeout)
         save_manifest(entries, cache_dir)
         return entries
     payload = json.loads(path.read_text(encoding="utf-8"))
     return [ManifestEntry(**item) for item in payload]
 
 
+def _matches_dataset(name: str, dataset: str) -> bool:
+    if dataset not in DATASET_ALIASES:
+        return name == dataset
+    # Prefer og_aa_fasta.gz over the shorter aa_fasta.gz suffix.
+    suffixes = (suffix for suffix in DATASET_ALIASES.values() if name == suffix or name.endswith(f"_{suffix}"))
+    return max(suffixes, key=len, default=None) == DATASET_ALIASES[dataset]
+
+
 def resolve_dataset(entries: Iterable[ManifestEntry], dataset: str) -> ManifestEntry:
-    needle = DATASET_ALIASES.get(dataset, dataset)
-    if needle == dataset:
-        matches = [entry for entry in entries if entry.name == needle]
-    else:
-        matches = [entry for entry in entries if entry.name == needle or entry.name.endswith(f"_{needle}")]
+    matches = [entry for entry in entries if _matches_dataset(entry.name, dataset)]
     if not matches:
         names = ", ".join(sorted(DATASET_ALIASES))
         raise OrthoDBError(f"unknown dataset {dataset!r}; known aliases: {names}")
@@ -127,33 +130,35 @@ def cache_status(cache_dir: Path, entries: Iterable[ManifestEntry]) -> list[dict
     return rows
 
 
-def download_entry(entry: ManifestEntry, cache_dir: Path, verify: bool = True) -> Path:
+def download_entry(entry: ManifestEntry, cache_dir: Path, verify: bool = True, *, timeout: float = 60.0) -> Path:
     cache_dir.mkdir(parents=True, exist_ok=True)
     destination = cache_dir / entry.name
     if destination.exists() and (not verify or md5sum(destination) == entry.md5):
         return destination
 
-    fd, tmp_name = tempfile.mkstemp(prefix=f".{entry.name}.", suffix=".part", dir=cache_dir)
-    os.close(fd)
-    tmp_path = Path(tmp_name)
     req = Request(entry.url, headers={"User-Agent": "orthodb/0.1"})
+    out = tempfile.NamedTemporaryFile(
+        mode="wb", prefix=f".{entry.name}.", suffix=".part", dir=cache_dir, delete=False
+    )
+    tmp_path = Path(out.name)
     try:
-        with urlopen(req, timeout=60) as response, tmp_path.open("wb") as out:
+        with out, urlopen(req, timeout=timeout) as response:
             while True:
                 chunk = response.read(1024 * 1024)
                 if not chunk:
                     break
                 out.write(chunk)
-    except Exception:
-        tmp_path.unlink(missing_ok=True)
-        raise
-
-    if verify:
-        got = md5sum(tmp_path)
-        if got != entry.md5:
+        if verify:
+            got = md5sum(tmp_path)
+            if got != entry.md5:
+                raise OrthoDBError(f"MD5 mismatch for {entry.name}: expected {entry.md5}, got {got}")
+        tmp_path.replace(destination)
+    except BaseException as original_error:
+        try:
             tmp_path.unlink(missing_ok=True)
-            raise OrthoDBError(f"MD5 mismatch for {entry.name}: expected {entry.md5}, got {got}")
-    tmp_path.replace(destination)
+        except OSError as cleanup_error:
+            original_error.add_note(f"could not remove partial download {tmp_path}: {cleanup_error}")
+        raise
     return destination
 
 
@@ -166,12 +171,10 @@ def md5sum(path: Path) -> str:
 
 
 def find_cached_file(cache_dir: Path, alias: str) -> Path | None:
-    suffix = DATASET_ALIASES.get(alias, alias)
-    pattern = re.compile(re.escape(suffix) + r"$")
-    for path in cache_dir.glob("*"):
-        if path.is_file() and pattern.search(path.name):
-            return path
-    return None
+    matches = [path for path in cache_dir.glob("*") if path.is_file() and _matches_dataset(path.name, alias)]
+    if len(matches) > 1:
+        raise OrthoDBError(f"dataset {alias!r} matched multiple cached files; keep one dataset version per cache directory")
+    return matches[0] if matches else None
 
 
 class _ManifestParser(HTMLParser):
